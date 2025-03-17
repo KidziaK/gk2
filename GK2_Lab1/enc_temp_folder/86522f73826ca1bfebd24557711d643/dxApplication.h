@@ -51,6 +51,6 @@ private:
 	float m_transZ = 25.0f;
 
 	float m_cubeTransX = 0.0f;
-	double m_freq = 0.0f;
-	double m_lastTime = 0.0f;
+	float m_freq = 0.0f;
+	float m_lastTime = 0.0f;
 };

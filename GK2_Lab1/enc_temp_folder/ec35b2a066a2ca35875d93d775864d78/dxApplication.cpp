@@ -53,11 +53,11 @@ DxApplication::DxApplication(HINSTANCE hInstance)
 
 	LARGE_INTEGER li;
 	if (QueryPerformanceFrequency(&li)) {
-		m_freq = static_cast<double>(li.QuadPart);
+		m_freq = static_cast<float>(li.QuadPart);
 	}
 
 	if (QueryPerformanceCounter(&li)) {
-		m_lastTime = static_cast<double>(li.QuadPart) / m_freq;
+		m_lastTime = 1e-6f * static_cast<float>(li.QuadPart) / m_freq;
 	}
 }
 
@@ -90,9 +90,9 @@ void DxApplication::Update()
 {
 	LARGE_INTEGER li;
 	if (QueryPerformanceCounter(&li)) {
-		double ticks = static_cast<double>(li.QuadPart);
-		double new_time = ticks / m_freq;
-		double delta_time = new_time - m_lastTime;
+		float ticks = static_cast<float>(li.QuadPart);
+		float new_time = 1e-6f * ticks / m_freq;
+		float delta_time = new_time - m_lastTime;
 		m_angle += fmodf(delta_time * DirectX::XM_PI / 4, 2 * DirectX::XM_2PI);
 		m_lastTime = new_time;
 	}
@@ -205,14 +205,14 @@ void DxApplication::Render()
 	m_device.context()->IASetIndexBuffer(m_indexBuffer.get(), DXGI_FORMAT_R16_UINT, 0);
 	m_device.context()->DrawIndexed(36, 0, 0);
 
-	XMStoreFloat4x4(
+	/*XMStoreFloat4x4(
 		&m_viewMtx,
 		DirectX::XMMatrixRotationX(DirectX::XMConvertToRadians(m_degreesX)) * DirectX::XMMatrixTranslation(0.0f, 0.0f, m_transZ)
 	);
 
 	XMStoreFloat4x4(
 		&m_modelMtx,
-		DirectX::XMMatrixRotationY(0.0f) * DirectX::XMMatrixTranslation(10.0f, 0.0f, 0.0f)
+		DirectX::XMMatrixRotationY(m_angle) * DirectX::XMMatrixTranslation(m_cubeTransX, 0.0f, 0.0f)
 	);
 
 	D3D11_MAPPED_SUBRESOURCE res;
@@ -223,9 +223,7 @@ void DxApplication::Render()
 
 	memcpy(res.pData, &mvp, sizeof(DirectX::XMFLOAT4X4));
 
-	m_device.context()->Unmap(m_cbMVP.get(), 0);
-
-	m_device.context()->DrawIndexed(36, 0, 0);
+	m_device.context()->Unmap(m_cbMVP.get(), 0);*/
 }
 
 std::vector<DirectX::XMFLOAT2> DxApplication::CreateTriangleVertices() {
