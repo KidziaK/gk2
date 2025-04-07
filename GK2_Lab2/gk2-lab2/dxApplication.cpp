@@ -12,7 +12,7 @@ DxApplication::DxApplication(HINSTANCE hInstance, int wndWidth, int wndHeight, s
 	m_keyboard(m_inputDevice.CreateKeyboardDevice(m_window.getHandle())),
 	m_camera(XMFLOAT3(0, 0, 0), 0.01f, 50.0f, 5)
 {
-	ID3D11Texture2D *temp = nullptr;
+	ID3D11Texture2D* temp = nullptr;
 	auto hr = m_device.swapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&temp));
 	const dx_ptr<ID3D11Texture2D> backTexture{ temp };
 	if (FAILED(hr))

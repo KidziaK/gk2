@@ -43,10 +43,10 @@ const XMFLOAT4 ButterflyDemo::COLORS[] = {
 #pragma region Initalization
 ButterflyDemo::ButterflyDemo(HINSTANCE hInstance)
 	: Base(hInstance, 1280, 720, L"Motyl"),
-	  m_cbWorld(m_device.CreateConstantBuffer<XMFLOAT4X4>()),
-	  m_cbView(m_device.CreateConstantBuffer<XMFLOAT4X4, 2>()),
-	  m_cbLighting(m_device.CreateConstantBuffer<Lighting>()),
-	  m_cbSurfaceColor(m_device.CreateConstantBuffer<XMFLOAT4>())
+	m_cbWorld(m_device.CreateConstantBuffer<XMFLOAT4X4>()),
+	m_cbView(m_device.CreateConstantBuffer<XMFLOAT4X4, 2>()),
+	m_cbLighting(m_device.CreateConstantBuffer<Lighting>()),
+	m_cbSurfaceColor(m_device.CreateConstantBuffer<XMFLOAT4>())
 
 {
 	//Projection matrix
@@ -64,8 +64,6 @@ ButterflyDemo::ButterflyDemo(HINSTANCE hInstance)
 	auto psCode = m_device.LoadByteCode(L"ps.cso");
 	m_vs = m_device.CreateVertexShader(vsCode);
 	m_ps = m_device.CreatePixelShader(psCode);
-
-	//TODO : 0.3. Change input layout to match new vertex structure
 	m_il = m_device.CreateInputLayout(VertexPositionNormal::Layout, vsCode);
 
 	//Billboard shaders
@@ -83,7 +81,7 @@ ButterflyDemo::ButterflyDemo(HINSTANCE hInstance)
 
 	//Meshes
 
-	//TODO : 0.2. Create a shaded box model instead of colored one 
+	//TODO : 0.2. Create a shaded box model instead of colored one
 	m_box = Mesh::ShadedBox(m_device);
 
 	m_pentagon = Mesh::Pentagon(m_device);
@@ -106,39 +104,48 @@ void ButterflyDemo::CreateRenderStates()
 //Setup render states used in various stages of the scene rendering
 {
 	DepthStencilDescription dssDesc;
-	dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; //Disable writing to depth buffer
-	m_dssNoDepthWrite = m_device.CreateDepthStencilState(dssDesc); // depth stencil state for billboards
+	dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	m_dssNoDepthWrite = m_device.CreateDepthStencilState(dssDesc);
 
 	//TODO : 1.20. Setup depth stencil state for writing to stencil buffer
-
+	dssDesc.StencilEnable = true; 
+	dssDesc.BackFace.StencilFunc = D3D11_COMPARISON_NEVER;
+	dssDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS; 
+	dssDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
 	m_dssStencilWrite = m_device.CreateDepthStencilState(dssDesc);
 
 	//TODO : 1.36. Setup depth stencil state for stencil test for billboards
-
+	dssDesc.BackFace.StencilFunc = D3D11_COMPARISON_NEVER;
+	dssDesc.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
 	m_dssStencilTestNoDepthWrite = m_device.CreateDepthStencilState(dssDesc);
 
 	//TODO : 1.21. Setup depth stencil state for stencil test for 3D objects
-
+	dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 	m_dssStencilTest = m_device.CreateDepthStencilState(dssDesc);
 
-	RasterizerDescription rsDesc;
 	//TODO : 1.13. Setup rasterizer state with ccw front faces
-
+	RasterizerDescription rsDesc;
+	rsDesc.FrontCounterClockwise = true;
 	m_rsCCW = m_device.CreateRasterizerState(rsDesc);
 
 	BlendDescription bsDesc;
 	//TODO : 1.26. Setup alpha blending state
-
+	bsDesc.RenderTarget[0].BlendEnable = true;
+	bsDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	bsDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	bsDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
 	m_bsAlpha = m_device.CreateBlendState(bsDesc);
 
 	//TODO : 1.30. Setup additive blending state
-
+	bsDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	bsDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 	m_bsAdd = m_device.CreateBlendState(bsDesc);
 }
 
 void ButterflyDemo::CreateDodecahadronMtx()
 //Compute dodecahedronMtx and mirrorMtx
 {
+	//TODO : 1.01. calculate m_dodecahedronMtx matrices
 	XMMATRIX currentTransform = XMMatrixRotationX(XM_PIDIV2) * XMMatrixTranslation(0, -DODECAHEDRON_H / 2, 0) * XMMatrixScaling(2.0, 2.0, 2.0);
 	XMStoreFloat4x4(&m_dodecahedronMtx[0], currentTransform);
 	XMStoreFloat4x4(&m_dodecahedronMtx[6], currentTransform * XMMatrixRotationZ(XM_PI));
@@ -162,17 +169,24 @@ void ButterflyDemo::CreateDodecahadronMtx()
 		a += da;
 	}
 
-
+	//TODO : 1.12. calculate m_mirrorMtx matrices
+	XMMATRIX scale = XMMatrixScaling(1, 1, -1);
+	XMVECTOR det;
+	for (int i = 0; i < 12; ++i)
+	{
+		currentTransform = XMLoadFloat4x4(&m_dodecahedronMtx[i]);
+		XMStoreFloat4x4(&m_mirrorMtx[i], XMMatrixInverse(&det, currentTransform) * scale * currentTransform);
+	}
 }
 
 XMFLOAT3 ButterflyDemo::MoebiusStripPos(float t, float s)
 //TODO : 1.04. Compute the position of point on the Moebius strip for parameters t and s
 {
-	float x = cosf(t) * (MOEBIUS_R + MOEBIUS_W * s * cosf(t / 2));
-	float y = sinf(t) * (MOEBIUS_R + MOEBIUS_W * s * cosf(t / 2));
-	float z = MOEBIUS_W * s * sinf(t / 2);
-	
-	return {x, y, z};
+	float x = XMScalarCos(t) * (MOEBIUS_R + MOEBIUS_W * s * XMScalarCos(t / 2));
+	float y = MOEBIUS_W * s * sinf(t / 2); 
+	float z = XMScalarSin(t) * (MOEBIUS_R + MOEBIUS_W * s * XMScalarCos(t / 2));
+
+	return { x, y, z };
 }
 
 XMVECTOR ButterflyDemo::MoebiusStripDs(float t, float s)
@@ -195,7 +209,7 @@ XMVECTOR ButterflyDemo::MoebiusStripDt(float t, float s)
 	float x_t = -A * XMScalarSin(t) - B * XMScalarCos(t);
 	float y_t = MOEBIUS_W * s * 0.5f * XMScalarCos(t / 2);
 	float z_t = +A * XMScalarCos(t) - B * XMScalarSin(t);
-	
+
 
 	XMFLOAT3 dt = { x_t, y_t, z_t };
 	return XMVector3Normalize(XMLoadFloat3(&dt));
@@ -225,9 +239,9 @@ void ButterflyDemo::CreateMoebuisStrip()
 		XMStoreFloat3(&vertices[2 * i + 1].normal, normal);
 	}
 	vector<unsigned short> indices(12 * MOEBIUS_N);
-	
+
 	int i = 0;
-	for(; i < 2 * MOEBIUS_N - 1; i++)
+	for (; i < 2 * MOEBIUS_N - 1; i++)
 	{
 		indices[6 * i] = 2 * i; indices[6 * i + 1] = 2 * i + 1; indices[6 * i + 2] = 2 * i + 3;
 		indices[6 * i + 3] = 2 * i; indices[6 * i + 4] = 2 * i + 3; indices[6 * i + 5] = 2 * i + 2;
@@ -276,8 +290,34 @@ void ButterflyDemo::UpdateButterfly(float dtime)
 	t *= XM_2PI;
 	if (a > WING_MAX_A)
 		a = 2 * WING_MAX_A - a;
-	//Write the rest of code here
+
 	
+
+	//Write the rest of code here
+	XMFLOAT3 pos3 = MoebiusStripPos(t, 0);
+	XMFLOAT4 pos4 = { pos3.x, pos3.y, pos3.z, 1.0f };
+	XMVECTOR pos = XMLoadFloat4(&pos4);
+	
+	XMVECTOR dt = MoebiusStripDt(t, 0);
+	XMVECTOR ds = MoebiusStripDs(t, 0);
+	XMVECTOR normal = XMVector3Normalize(XMVector3Cross(ds, dt));
+
+	XMFLOAT3 normalf3;
+	XMStoreFloat3(&normalf3, normal);
+
+	//m_camera.origin = MoebiusStripPos(t - 0.5, 0);/*
+	//m_camera.target = MoebiusStripPos(t, 0);*/
+
+	XMMATRIX local_basis;
+
+	local_basis.r[0] = ds;
+	local_basis.r[1] = dt;
+	local_basis.r[2] = normal;
+	local_basis.r[3] = pos;
+
+	XMMATRIX transformation = XMMatrixTranslation(1.0f, 0.0f, 0.0f) * XMMatrixScaling(0.5f * WING_H, 0.5f * WING_W, 1.0f) * XMMatrixRotationY(XM_PIDIV2);		
+	XMStoreFloat4x4(&m_wingMtx[0], transformation * XMMatrixRotationY(a) * local_basis);
+	XMStoreFloat4x4(&m_wingMtx[1], transformation * XMMatrixRotationY(-a) * local_basis);
 }
 #pragma endregion
 
@@ -320,14 +360,15 @@ void ButterflyDemo::Set3Lights()
 		/*.ambientColor = */ XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
 		/*.surface = */ XMFLOAT4(0.2f, 0.8f, 0.8f, 200.0f),
 		/*.lights =*/{
-			{ /*.position =*/ m_camera.getCameraPosition(), /*.color =*/ XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
+			{ /*.position =*/ m_camera.getCameraPosition(), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
 			//Write the rest of the code here
-
+			{ GREEN_LIGHT_POS, XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+			{ BLUE_LIGHT_POS, XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }
 		}
 	};
 
 	//comment the following line when structure is filled
-	ZeroMemory(&l.lights[1], sizeof(Light) * 2);
+	//ZeroMemory(&l.lights[1], sizeof(Light) * 2);
 
 	UpdateBuffer(m_cbLighting, l);
 }
@@ -346,18 +387,19 @@ void ButterflyDemo::DrawDodecahedron(bool colors)
 //Draw dodecahedron. If color is true, use render faces with corresponding colors. Otherwise render using white color
 {
 	//TODO : 1.02. Draw all dodecahedron sides with colors - ignore function parameter for now
-	XMFLOAT4X4 worldMtx;
-	for (int i = 0; i < 12; i++)
-	{
-		auto& matrix = m_dodecahedronMtx[i];
-		XMStoreFloat4x4(&worldMtx, XMLoadFloat4x4(&matrix));
-		UpdateBuffer(m_cbWorld, worldMtx);
-		UpdateBuffer(m_cbSurfaceColor, COLORS[i]);
-		m_pentagon.Render(m_device.context());
-	}
 
 	//TODO : 1.14. Modify function so if colors parameter is set to false, all faces are drawn white instead
-	
+	for (int i = 0; i < 12; ++i)
+	{
+		auto matrix = m_dodecahedronMtx[i];
+
+		if (colors) {
+			UpdateBuffer(m_cbSurfaceColor, COLORS[i]);
+		}
+
+		UpdateBuffer(m_cbWorld, matrix);
+		m_pentagon.Render(m_device.context());
+	}
 }
 
 void ButterflyDemo::DrawMoebiusStrip()
@@ -372,42 +414,84 @@ void ButterflyDemo::DrawMoebiusStrip()
 void ButterflyDemo::DrawButterfly()
 //TODO : 1.11. Draw the butterfly
 {
-	
+	for (int i = 0; i < 2; ++i)
+	{
+		UpdateBuffer(m_cbWorld, m_wingMtx[i]);
+		m_wing.Render(m_device.context());
+	}
 }
 
 void ButterflyDemo::DrawBillboards()
 //Setup billboards rendering and draw them
 {
 	//TODO : 1.33. Setup shaders and blend state
+	SetBillboardShaders();
+	m_device.context()->OMSetBlendState(m_bsAdd.get(), nullptr, BS_MASK);
 
 	//TODO : 1.34. Draw both billboards with appropriate colors and transformations
+	UpdateBuffer(m_cbSurfaceColor, XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f));
+	XMFLOAT4X4 billboard_matrix;
+	auto transform = XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(GREEN_LIGHT_POS.x, GREEN_LIGHT_POS.y, GREEN_LIGHT_POS.z);
+	XMStoreFloat4x4(&billboard_matrix, transform);
+	UpdateBuffer(m_cbWorld, billboard_matrix);
+	m_bilboard.Render(m_device.context());
+
+	UpdateBuffer(m_cbSurfaceColor, XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f));
+	transform = XMMatrixScaling(0.2f, 0.2f, 0.2f) * XMMatrixTranslation(BLUE_LIGHT_POS.x, BLUE_LIGHT_POS.y, BLUE_LIGHT_POS.z);
+	XMStoreFloat4x4(&billboard_matrix, transform);
+	UpdateBuffer(m_cbWorld, billboard_matrix);
+	m_bilboard.Render(m_device.context());
 
 	//TODO : 1.35. Restore rendering state to it's original values
-
+	UpdateBuffer(m_cbSurfaceColor, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+	m_device.context()->OMSetBlendState(nullptr, nullptr, BS_MASK);
+	SetShaders();
 }
 
 void ButterflyDemo::DrawMirroredWorld(unsigned int i)
 //Draw the mirrored scene reflected in the i-th dodecahedron face
 {
 	//TODO : 1.22. Setup render state for writing to the stencil buffer
+	m_device.context()->OMSetDepthStencilState(m_dssStencilWrite.get(), i + 1);
 
 	//TODO : 1.23. Draw the i-th face
+	UpdateBuffer(m_cbWorld, m_dodecahedronMtx[i]);
+	m_pentagon.Render(m_device.context());
 
 	//TODO : 1.24. Setup depth stencil state for rendering mirrored world
+	m_device.context()->OMSetDepthStencilState(m_dssStencilTest.get(), i + 1);
 
 	//TODO : 1.15. Setup rasterizer state and view matrix for rendering the mirrored world
+	XMMATRIX viewMtx = m_camera.getViewMatrix();
+	XMFLOAT4X4 mirrorViewMtx;
+	XMStoreFloat4x4(&mirrorViewMtx, XMMatrixMultiply(XMLoadFloat4x4(&m_mirrorMtx[i]), viewMtx));
+	UpdateCameraCB(mirrorViewMtx);
+	m_device.context()->RSSetState(m_rsCCW.get());
 
 	//TODO : 1.16. Draw 3D objects of the mirrored scene - dodecahedron should be drawn with only one light and no colors and without blending
+	Set1Light();
+	DrawDodecahedron(false);
+	Set3Lights();
+	UpdateBuffer(m_cbSurfaceColor, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+	//DrawBox();
+	DrawMoebiusStrip();
+	DrawButterfly();
 
 	//TODO : 1.17. Restore rasterizer state to it's original value
+	m_device.context()->RSSetState(nullptr);
 
 	//TODO : 1.37. Setup depth stencil state for rendering mirrored billboards
-	
+	m_device.context()->OMSetDepthStencilState(m_dssStencilTestNoDepthWrite.get(), i + 1);
+
 	//TODO : 1.38. Draw mirrored billboards - they need to be drawn after restoring rasterizer state, but with mirrored view matrix
+	DrawBillboards();
 
 	//TODO : 1.18. Restore view matrix to its original value
+	XMStoreFloat4x4(&mirrorViewMtx, viewMtx);
+	UpdateCameraCB(mirrorViewMtx);
 
 	//TODO : 1.25. Restore depth stencil state to it's original value
+	m_device.context()->OMSetDepthStencilState(nullptr, 0);
 }
 
 void ButterflyDemo::Render()
@@ -415,8 +499,9 @@ void ButterflyDemo::Render()
 	Base::Render();
 
 	//render mirrored worlds
-	for (int i = 0; i < 12; ++i)
+	for (int i = 0; i < 12; ++i) {
 		DrawMirroredWorld(i);
+	}
 
 	//render dodecahedron with one light and alpha blending
 	m_device.context()->OMSetBlendState(m_bsAlpha.get(), nullptr, BS_MASK);
@@ -428,7 +513,7 @@ void ButterflyDemo::Render()
 
 	//render the rest of the scene with all lights
 	Set3Lights();
-	//UpdateBuffer(m_cbSurfaceColor, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+	UpdateBuffer(m_cbSurfaceColor, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
 	//TODO : 1.03. [optional] Comment the following line
 	//DrawBox();
 	DrawMoebiusStrip();

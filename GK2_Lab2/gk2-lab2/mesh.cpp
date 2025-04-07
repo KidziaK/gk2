@@ -164,7 +164,7 @@ std::vector<unsigned short> mini::Mesh::BoxIdxs()
 
 std::vector<VertexPositionNormal> mini::Mesh::PentagonVerts(float radius)
 {
-	std::vector<VertexPositionNormal> vertices;
+	std::vector<VertexPositionNormal> vertices;	
 	vertices.reserve(5);
 	float a = 0, da = XM_2PI / 5.0f;
 	for (int i = 0; i < 5; ++i, a -= da)

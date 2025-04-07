@@ -12,8 +12,9 @@ OrbitCamera::OrbitCamera(XMFLOAT3 target, float minDist, float maxDist, float di
 }
 
 OrbitCamera::OrbitCamera(float minDist, float maxDist, float distance)
-	: OrbitCamera(XMFLOAT3{0.0f, 0.0f, 0.0f}, minDist, maxDist, distance)
-{ }
+	: OrbitCamera(XMFLOAT3{ 0.0f, 0.0f, 0.0f }, minDist, maxDist, distance)
+{
+}
 
 void OrbitCamera::SetDistanceRange(float minDistance, float maxDistance)
 {

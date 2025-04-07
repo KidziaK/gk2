@@ -29,7 +29,7 @@ namespace mini
 
 		const Clock& getClock() const { return m_clock; }
 		virtual void Render();
-		virtual void Update(const Clock& c) { }
+		virtual void Update(const Clock& c) {}
 
 		void UpdateBuffer(const dx_ptr<ID3D11Buffer>& buffer, const void* data, size_t count);
 		template<typename T>

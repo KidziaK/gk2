@@ -25,15 +25,15 @@ struct VSInput
 struct PSInput
 {
 	float4 pos : SV_POSITION;
-    float4 normal : NORMAL;
-    float4 view : VIEW;
-    float4 posWorld : POS;
+    float3 N : NORMAL;
+    float3 V : VIEW;
+    float3 P : POSITION_WORLD;
 };
 PSInput main(VSInput i)
 {
 	PSInput o;
 	float4 pos = mul(worldMatrix, float4(i.pos, 1.0f));
-
+    o.P = pos.xyz;
 	//TODO : 0.6. Store global (world) position in the output
 
     pos = mul(viewMatrix, pos);
@@ -42,13 +42,10 @@ PSInput main(VSInput i)
 	//TODO : 0.7. Calculate output normal and view vectors in global coordinates frame
 	//Hint: you can calculate camera position from inverted view matrix
 		
-    float4 posWorld = mul(worldMatrix, float4(i.pos, 1.0f));
-    float4 normal = normalize(mul(worldMatrix, float4(i.normal, 0.0f)));
-    float4 cameraPosition = mul(invViewMatrix, float4(0.0f, 0.0f, 0.0f, 1.0f));
-    float4 viewVector = normalize(posWorld - cameraPosition);
+    
+    o.N = normalize(mul(worldMatrix, float4(i.normal, 0.0f)).xyz);
+    float3 cameraPosition = mul(invViewMatrix, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+    o.V = normalize(cameraPosition - o.P);
 		
-    o.posWorld = posWorld;
-    o.normal = normal;
-    o.view = viewVector;
 	return o;
 }
