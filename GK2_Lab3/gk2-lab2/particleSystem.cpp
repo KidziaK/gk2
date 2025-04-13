@@ -4,6 +4,7 @@
 
 #include "dxDevice.h"
 #include "exceptions.h"
+#include <algorithm>
 
 using namespace mini;
 using namespace gk2;
@@ -77,12 +78,25 @@ Particle ParticleSystem::RandomParticle()
 	Particle p;
 	// TODO : 1.27 Setup initial particle properties
 
+	p.Vertex.Pos = XMFLOAT3(m_emitterPos.x, m_emitterPos.y, m_emitterPos.z);
+	p.Vertex.Age = 0.0f;
+	p.Vertex.Size = PARTICLE_SIZE;
+	p.Vertex.Angle = 0.0f;
+	p.Velocities.Velocity = RandomVelocity();
+	p.Velocities.AngularVelocity = anglularVelDist(m_random);
+	
 	return p;
 }
 
 void ParticleSystem::UpdateParticle(Particle& p, float dt)
 {
 	// TODO : 1.28 Update particle properties
+	p.Vertex.Age += dt;
+	p.Vertex.Pos.x += p.Velocities.Velocity.x * dt;
+	p.Vertex.Pos.y += p.Velocities.Velocity.y * dt;
+	p.Vertex.Pos.z += p.Velocities.Velocity.z * dt;
+	p.Vertex.Angle += p.Velocities.AngularVelocity * dt;
+	p.Vertex.Size += PARTICLE_SIZE * PARTICLE_SCALE * dt;
 }
 
 vector<ParticleVertex> ParticleSystem::GetParticleVerts(DirectX::XMFLOAT4 cameraPosition)
@@ -91,6 +105,33 @@ vector<ParticleVertex> ParticleSystem::GetParticleVerts(DirectX::XMFLOAT4 camera
 
 	vector<ParticleVertex> vertices;
 	// TODO : 1.29 Copy particles' vertex data to a vector and sort them
+
+	vertices.reserve(m_particles.size());
+
+	for (auto& p : m_particles)
+	{
+		ParticleVertex pv = p.Vertex;
+		vertices.push_back(pv);
+	}
+
+	std::sort(vertices.begin(), vertices.end(),
+		[&cameraPosition](const ParticleVertex& a, const ParticleVertex& b)
+		{
+			XMVECTOR aPos = XMLoadFloat3(&a.Pos);
+			XMVECTOR bPos = XMLoadFloat3(&b.Pos);
+
+			XMVECTOR camPos = XMLoadFloat4(&cameraPosition);
+
+			auto aDistance = XMVector3Length(aPos - camPos);
+			auto bDistance = XMVector3Length(bPos - camPos);
+
+			float adist, bdist;
+			XMStoreFloat(&adist, aDistance);
+			XMStoreFloat(&bdist, bDistance);
+
+			return adist > bdist;
+		});
+
 
 	return vertices;
 }

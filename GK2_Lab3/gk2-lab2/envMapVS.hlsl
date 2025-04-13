@@ -31,10 +31,11 @@ PSInput main(VSInput i)
     PSInput o = (PSInput) 0;
     float4 worldPosition = float4(i.pos, 1.0f);
     float4 worldNormal = float4(i.norm, 0.0f);
-
+    
     worldPosition = mul(worldMatrix, worldPosition);
     worldNormal = normalize(mul(worldMatrix, worldNormal));
     o.pos = worldPosition;
+    
 
 	// TODO : 1.23 Calculate cube map texture coordinates
     float3 camPos = mul(invViewMatrix, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
